@@ -1,4 +1,5 @@
 const path = require("path");
+const webpack = require('webpack');
 
 module.exports = {
     entry: {
@@ -19,7 +20,9 @@ module.exports = {
         watchContentBase: true
     },
     plugins: [
-
+        new webpack.ProvidePlugin({
+            CANNON: 'cannon'
+        })
     ],
     module: {
         rules: [{

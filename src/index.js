@@ -7,7 +7,8 @@ const createWall = (props) => {
     const wall = new BABYLON.MeshBuilder.CreateBox(
         "wall", {
             width: props.size,
-            height: props.size
+            height: props.size,
+            depth: props.depth
         },
         scene
     );
@@ -23,6 +24,7 @@ var createScene = function () {
 
     // Create the scene space
     var scene = new BABYLON.Scene(engine);
+    scene.enablePhysics(new BABYLON.Vector3(0, -9.8, 0), new BABYLON.CannonJSPlugin()); // Physics
 
     // Add a camera to the scene and attach it to the canvas
     var camera = new BABYLON.ArcRotateCamera(
@@ -39,7 +41,7 @@ var createScene = function () {
     var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
     // Add and manipulate meshes in the scene
-    var cube = new BABYLON.Mesh.CreateBox("box", 1, scene);
+    // var cube = new BABYLON.Mesh.CreateBox("box", 1, scene);
 
     // Create playground
     const material = new BABYLON.StandardMaterial("groundMaterial", scene);
@@ -52,19 +54,31 @@ var createScene = function () {
     var playground = new BABYLON.MeshBuilder.CreateGround("ground", {}, scene);
     const vertexData = BABYLON.VertexData.CreateBox({
         width: size,
-        height: size
+        height: size,
+        depth: 0.05
     });
     vertexData.applyToMesh(playground);
     playground.material = material;
     playground.position.y = -1;
     playground.rotation.x = Math.PI / 2;
 
+    // Playground physics
+    playground.physicsImpostor = new BABYLON.PhysicsImpostor(
+        playground,
+        BABYLON.PhysicsImpostor.BoxImpostor, {
+            mass: 0,
+            restitution: 0.9
+        },
+        scene
+    );
+
     // Create walls
     const wallsCommonProps = {
+        depth: 1,
+        material: material,
         parent: playground,
-        size: size,
         scene: scene,
-        material: material
+        size: size
     };
     const topWall = createWall({
         ...wallsCommonProps,
@@ -88,9 +102,52 @@ var createScene = function () {
     // });
     const westWall = createWall({
         ...wallsCommonProps,
-        position: {x: 0.5 + size / 2, y: 0.5 - 1 / size, z: -size / 2},
+        position: {x: size / 2, y: -1 / size, z: -size / 2},
         rotation: {y: Math.PI / 2}
     });
+
+    // Create ball
+    const ball = new BABYLON.Mesh.CreateSphere("ball", {}, scene);
+    const ballVertexData = BABYLON.VertexData.CreateSphere({diameter: 1});
+    ballVertexData.applyToMesh(ball);
+
+    const ballMaterial = new BABYLON.StandardMaterial(
+      'ballMaterial',
+      scene
+    );
+
+    ballMaterial.diffuseColor = new BABYLON.Color3(0.3, 0, 0.8);
+    ballMaterial.emissiveColor = new BABYLON.Color3(0.3, 0, 0.8);
+    ballMaterial.alpha = 0.6;
+    ballMaterial.specularPower = 16;
+    ballMaterial.specularColor = new BABYLON.Color3(0.7, 0.7, 1);
+
+    // Fresnel
+    ballMaterial.reflectionFresnelParameters = new BABYLON.FresnelParameters();
+
+    ballMaterial.emissiveFresnelParameters = new BABYLON.FresnelParameters();
+    ballMaterial.emissiveFresnelParameters.bias = 0.6;
+    ballMaterial.emissiveFresnelParameters.power = 4;
+    ballMaterial.emissiveFresnelParameters.leftColor = BABYLON.Color3.White();
+    ballMaterial.emissiveFresnelParameters.rightColor = BABYLON.Color3.Black();
+
+    ballMaterial.opacityFresnelParameters = new BABYLON.FresnelParameters();
+    ballMaterial.opacityFresnelParameters.leftColor = BABYLON.Color3.White();
+    ballMaterial.opacityFresnelParameters.rightColor = BABYLON.Color3.Black();
+
+    ball.material = ballMaterial;
+    ball.position = new BABYLON.Vector3(0, 1, 0);
+
+    // Ball physics
+    ball.physicsImpostor = new BABYLON.PhysicsImpostor(
+        ball,
+        BABYLON.PhysicsImpostor.SphereImpostor, {
+            mass: 1,
+            friction: 0.9,
+            restitution: 0.9
+        },
+        scene
+    );
     
     scene.ambientColor = BABYLON.Color3.White();
 
