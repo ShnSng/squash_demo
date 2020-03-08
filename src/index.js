@@ -11,7 +11,7 @@ const createWall = (props) => {
             height: props.size,
             depth: props.depth
         },
-        scene
+        props.scene
     );
     wall.parent = props.parent;
     wall.material = props.material;
@@ -49,13 +49,13 @@ var createScene = function () {
 
     var size = 30;
 
-    var playground = new BABYLON.MeshBuilder.CreateGround("ground", {}, scene);
-    const vertexData = BABYLON.VertexData.CreateBox({
-        width: size,
-        height: size,
-        depth: 0.05
-    });
-    vertexData.applyToMesh(playground);
+    var playground = new BABYLON.MeshBuilder.CreateBox(
+        "ground", {
+            width: size,
+            height: size,
+            depth: 0.1
+        }, scene
+    );
     playground.material = material;
     playground.position.y = -1;
     playground.rotation.x = Math.PI / 2;
@@ -163,13 +163,13 @@ BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "Idle.glb", scene, function
     root.position = new BABYLON.Vector3(10, 0, 10);
     root.rotation = new BABYLON.Vector3(0, 0, 0);
 
-    // root.physicsImpostor = new BABYLON.PhysicsImpostor(
-    //     root,
-    //     BABYLON.PhysicsImpostor.BoxImpostor, {
-    //         mass: 1,
-    //         restitution: 0.9
-    //     }, scene
-    // );
+    root.physicsImpostor = new BABYLON.PhysicsImpostor(
+        root,
+        BABYLON.PhysicsImpostor.BoxImpostor, {
+            mass: 1,
+            restitution: 0.2
+        }, scene
+    );
 
     // Movements
     var movestep = 0.1;
