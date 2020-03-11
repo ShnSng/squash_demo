@@ -127,7 +127,7 @@ var createScene = () => {
     // Create ball
     var ball = new BABYLON.Mesh.CreateSphere("ball", {}, scene);
 
-    var ballVertexData = BABYLON.VertexData.CreateSphere({diameter: 1});
+    var ballVertexData = BABYLON.VertexData.CreateSphere({diameter: 0.5});
     ballVertexData.applyToMesh(ball);
 
     var ballMaterial = new BABYLON.StandardMaterial(
@@ -167,6 +167,7 @@ var createScene = () => {
         scene
     );
     ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, -5));
+    ball.showBoundingBox = true;
     // ball.ellipsoid = new BABYLON.Vector3(0, 0, 0);
     // ball.ellipsoidOffset = new BABYLON.Vector3(0, 0, 0);
     // ball.checkCollisions = true;
@@ -178,8 +179,10 @@ var createScene = () => {
     // Player1
     BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "Idle.glb", scene, function (meshes, particleSystems, skeletons) {
         let root = meshes.find((mesh) => mesh.name === "__root__");
-        root.position = new BABYLON.Vector3(10, -0.9, 10);
-        root.rotation = new BABYLON.Vector3(0, 0, 0);
+        let initPosition = new BABYLON.Vector3(10, -0.9, 10);
+        let initRotation = new BABYLON.Vector3(0, 0, 0);
+        root.position = initPosition;
+        root.rotation = initRotation;
 
         root.physicsImpostor = new BABYLON.PhysicsImpostor(
             root,
@@ -191,13 +194,48 @@ var createScene = () => {
             scene
         );
         
-        // root.ellipsoid = new BABYLON.Vector3(0.5, 1.0, 0.5);
-        // root.ellipsoidOffset = new BABYLON.Vector3(0, 1.0, 0);
-        // root.checkCollisions = true;
+        root.ellipsoid = new BABYLON.Vector3(5, 5, 5);
+        root.ellipsoidOffset = new BABYLON.Vector3(5, 5, 5);
+        root.checkCollisions = true;
+        root.showBoundingBox = true;
+
+        var min = null;
+        var max = null;
+        meshes.forEach(function(mesh){
+            const boundingBox = mesh.getBoundingInfo().boundingBox;
+            if(min === null){
+                min = new BABYLON.Vector3();
+                min.copyFrom(boundingBox.minimum);
+            }
+
+            if(max === null){
+                max = new BABYLON.Vector3();
+                max.copyFrom(boundingBox.maximum);
+            }
+
+            min.x = boundingBox.minimum.x < min.x ? boundingBox.minimum.x : min.x;
+            min.y = boundingBox.minimum.y < min.y ? boundingBox.minimum.y : min.y;
+            min.z = boundingBox.minimum.z < min.z ? boundingBox.minimum.z : min.z;
+
+            max.x = boundingBox.maximum.x > max.x ? boundingBox.maximum.x : max.x;
+            max.y = boundingBox.maximum.y > max.y ? boundingBox.maximum.y : max.y;
+            max.z = boundingBox.maximum.z > max.z ? boundingBox.maximum.z : max.z;
+        });
+        
+        const m = BABYLON.MeshBuilder.CreateBox("bounds", {size:1}, scene);
+        const size = max.subtract(min);
+        size.x *= 3;
+        size.y *= 2;
+        size.z *= 2;
+        m.parent = root;
+        m.scaling.copyFrom(size);
+        m.position.y = 2.9;
+        m.visibility = 0.1;
+
         // root.applyGravity = true;
 
         // Movements
-        var movestep = 0.1;
+        var movestep = 0.3;
 
         let idleIsImported = true;
 
@@ -225,6 +263,8 @@ var createScene = () => {
             pressed: false,
             imported: false
         };
+
+        let isInRange = false;
 
         window.addEventListener("keydown", event => {
             switch (event.keyCode) {
@@ -284,10 +324,12 @@ var createScene = () => {
 
         scene.registerBeforeRender(function() {
             if (!scene.isReady()) return;
-            
-            if (root.intersectsMesh(ball, false)) {
-                console.log("touch");
-                ball.moveWithCollisions(new BABYLON.Vector3(0, 0, -1));
+
+            if (m.intersectsMesh(ball, false)) {
+                console.log("in range");
+                isInRange = true;
+            } else {
+                isInRange = false;
             }
 
             if (forward.pressed) {
@@ -344,7 +386,9 @@ var createScene = () => {
                         }
                     });
                 }*/
-                ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(5, 10, -10));
+                if (isInRange) {
+                    ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(5, 10, -10));
+                }
             } else if (leftClick.pressed) {
                 /*if (!leftClick.imported) {
                     BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunRight.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
@@ -355,7 +399,9 @@ var createScene = () => {
                         }
                     });
                 }*/
-                ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(-5, 10, -10));
+                if (isInRange) {
+                    ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(-5, 10, -10));
+                }
             } else {
                 if (!idleIsImported) {
                     BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "Idle.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
@@ -370,8 +416,10 @@ var createScene = () => {
 
         // scene.registerAfterRender(() => {
         //     if (root.intersectsMesh(ball, false)) {
-        //         console.log("touch");
-        //         ball.moveWithCollisions(new BABYLON.Vector3(0, 0, -1));
+        //         console.log("in range");
+        //         isInRange = true;
+        //     } else {
+        //         isInRange = false;
         //     }
         // });
     });
