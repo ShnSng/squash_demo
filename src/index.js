@@ -217,6 +217,14 @@ var createScene = () => {
             pressed: false,
             imported: false
         };
+        let rightClick = {
+            pressed: false,
+            imported: false
+        };
+        let leftClick = {
+            pressed: false,
+            imported: false
+        };
 
         window.addEventListener("keydown", event => {
             switch (event.keyCode) {
@@ -231,6 +239,12 @@ var createScene = () => {
                 break;
                 case 68: // D
                     right.pressed = true;
+                break;
+                case 65: // A
+                    rightClick.pressed = true;
+                break;
+                case 69: // E
+                    leftClick.pressed = true;
                 break;
                 default:
                 break;
@@ -254,6 +268,14 @@ var createScene = () => {
                 case 68: // D
                     right.pressed = false;
                     right.imported = false;
+                break;
+                case 65: // A
+                    rightClick.pressed = false;
+                    rightClick.imported = false;
+                break;
+                case 69: // E
+                    leftClick.pressed = false;
+                    rightClick.imported = false;
                 break;
                 default:
                 break;
@@ -312,6 +334,28 @@ var createScene = () => {
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(-movestep, 0, 0));
+            } else if (rightClick.pressed) {
+                /*if (!rightClick.imported) {
+                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunRight.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                        idleIsImported = false;
+                        rightClick.imported = true;
+                        if (scene.animationGroups.length > 0) {
+                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
+                        }
+                    });
+                }*/
+                ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(5, 10, -10));
+            } else if (leftClick.pressed) {
+                /*if (!leftClick.imported) {
+                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunRight.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                        idleIsImported = false;
+                        leftClick.imported = true;
+                        if (scene.animationGroups.length > 0) {
+                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
+                        }
+                    });
+                }*/
+                ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(-5, 10, -10));
             } else {
                 if (!idleIsImported) {
                     BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "Idle.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
