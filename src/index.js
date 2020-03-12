@@ -27,7 +27,7 @@ var createScene = () => {
 
     // Add a camera to the scene and attach it to the canvas
     var camera = new BABYLON.ArcRotateCamera(
-        "Camera",
+        "camera",
         Math.PI / 2,
         Math.PI / 3,
         35,
@@ -38,6 +38,15 @@ var createScene = () => {
 
     // Add lights to the scene
     var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+    var dirLight = new BABYLON.DirectionalLight(
+      "dirLight",
+      new BABYLON.Vector3(0, -1, -1),
+      scene
+    );
+    dirLight.position = new BABYLON.Vector3(0, 20, 0);
+    var shadows = new BABYLON.ShadowGenerator(1024, dirLight);
+    shadows.useBlurExponentialShadowMap = true;
+    shadows.setTransparencyShadow(true);
 
     // Create playground
     var size = 30;
@@ -52,10 +61,11 @@ var createScene = () => {
     playground.position.y = -1;
     playground.rotation.x = Math.PI / 2;
     playground.physicsImpostor = makeStaticImposter(playground, scene);
+    playground.receiveShadows = true;
 
     // Create walls
     var topWall = new BABYLON.MeshBuilder.CreateBox(
-        'wall',
+        "wall",
         {
             width: size,
             height: size,
@@ -131,8 +141,8 @@ var createScene = () => {
     ballVertexData.applyToMesh(ball);
 
     var ballMaterial = new BABYLON.StandardMaterial(
-      "ballMaterial",
-      scene
+        "ballMaterial",
+        scene
     );
 
     ballMaterial.diffuseColor = new BABYLON.Color3(0.3, 0, 0.8);
@@ -166,8 +176,16 @@ var createScene = () => {
         },
         scene
     );
-    ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, -5));
-    ball.showBoundingBox = true;
+    ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, -20, 0));
+    shadows.getShadowMap().renderList.push(ball);
+
+    scene.registerAfterRender(() => {
+        if (ball.position.z >= size) {
+            ball.position = new BABYLON.Vector3(0, 1, 0);
+            ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, -20, 0));
+        }
+    });
+    
     // ball.ellipsoid = new BABYLON.Vector3(0, 0, 0);
     // ball.ellipsoidOffset = new BABYLON.Vector3(0, 0, 0);
     // ball.checkCollisions = true;
@@ -175,6 +193,7 @@ var createScene = () => {
     scene.ambientColor = BABYLON.Color3.White();
 
     // Import players
+    var movestep = 0.3;
 
     // Player1
     BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "Idle.glb", scene, function (meshes, particleSystems, skeletons) {
@@ -183,6 +202,12 @@ var createScene = () => {
         let initRotation = new BABYLON.Vector3(0, 0, 0);
         root.position = initPosition;
         root.rotation = initRotation;
+
+        // BABYLON.SceneLoader.ImportMesh("", "assets/Racket/", "Racket.glb", scene, function (meshes, particleSystems, skeletons) {
+        //     let racket = meshes[0];
+        //     racket.position = new BABYLON.Vector3(-1.4, 4, -0.5);
+        //     racket.parent = root;
+        // });
 
         root.physicsImpostor = new BABYLON.PhysicsImpostor(
             root,
@@ -201,14 +226,14 @@ var createScene = () => {
 
         var min = null;
         var max = null;
-        meshes.forEach(function(mesh){
+        meshes.forEach(function (mesh) {
             const boundingBox = mesh.getBoundingInfo().boundingBox;
-            if(min === null){
+            if (min === null) {
                 min = new BABYLON.Vector3();
                 min.copyFrom(boundingBox.minimum);
             }
 
-            if(max === null){
+            if (max === null) {
                 max = new BABYLON.Vector3();
                 max.copyFrom(boundingBox.maximum);
             }
@@ -222,21 +247,19 @@ var createScene = () => {
             max.z = boundingBox.maximum.z > max.z ? boundingBox.maximum.z : max.z;
         });
         
-        const m = BABYLON.MeshBuilder.CreateBox("bounds", {size:1}, scene);
+        let range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
         const size = max.subtract(min);
         size.x *= 3;
         size.y *= 2;
         size.z *= 2;
-        m.parent = root;
-        m.scaling.copyFrom(size);
-        m.position.y = 2.9;
-        m.visibility = 0.1;
+        range.parent = root;
+        range.scaling.copyFrom(size);
+        range.position.y = 2.9;
+        range.visibility = 0;
 
         // root.applyGravity = true;
 
         // Movements
-        var movestep = 0.3;
-
         let idleIsImported = true;
 
         let forward = {
@@ -315,7 +338,7 @@ var createScene = () => {
                 break;
                 case 69: // E
                     leftClick.pressed = false;
-                    rightClick.imported = false;
+                    leftClick.imported = false;
                 break;
                 default:
                 break;
@@ -325,8 +348,7 @@ var createScene = () => {
         scene.registerBeforeRender(function() {
             if (!scene.isReady()) return;
 
-            if (m.intersectsMesh(ball, false)) {
-                console.log("in range");
+            if (range.intersectsMesh(ball, false)) {
                 isInRange = true;
             } else {
                 isInRange = false;
@@ -334,238 +356,422 @@ var createScene = () => {
 
             if (forward.pressed) {
                 if (!forward.imported) {
-                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunForward.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "RunForward.glb", scene, function (meshes, particleSystems, skeletons) {
                         idleIsImported = false;
                         forward.imported = true;
-                        if (scene.animationGroups.length > 0) {
-                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
-                        }
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(0, 0, -movestep));
             } else if (left.pressed) {
                 if (!left.imported) {
-                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunLeft.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "RunLeft.glb", scene, function (meshes, particleSystems, skeletons) {
                         idleIsImported = false;
                         left.imported = true;
-                        if (scene.animationGroups.length > 0) {
-                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
-                        }
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(movestep, 0, 0));
             } else if (backward.pressed) {
                 if (!backward.imported) {
-                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunBackward.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "RunBackward.glb", scene, function (meshes, particleSystems, skeletons) {
                         idleIsImported = false;
                         backward.imported = true;
-                        if (scene.animationGroups.length > 0) {
-                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
-                        }
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(0, 0, movestep));
             } else if (right.pressed) {
                 if (!right.imported) {
-                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunRight.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "RunRight.glb", scene, function (meshes, particleSystems, skeletons) {
                         idleIsImported = false;
                         right.imported = true;
-                        if (scene.animationGroups.length > 0) {
-                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
-                        }
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(-movestep, 0, 0));
             } else if (rightClick.pressed) {
-                /*if (!rightClick.imported) {
-                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunRight.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                if (!rightClick.imported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "ForeDropShot.glb", scene, function (meshes, particleSystems, skeletons) {
                         idleIsImported = false;
                         rightClick.imported = true;
-                        if (scene.animationGroups.length > 0) {
-                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
-                        }
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
                     });
-                }*/
+                }
                 if (isInRange) {
                     ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(5, 10, -10));
                 }
             } else if (leftClick.pressed) {
-                /*if (!leftClick.imported) {
-                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunRight.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                if (!leftClick.imported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "BackDropShot.glb", scene, function (meshes, particleSystems, skeletons) {
                         idleIsImported = false;
                         leftClick.imported = true;
-                        if (scene.animationGroups.length > 0) {
-                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
-                        }
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
                     });
-                }*/
+                }
                 if (isInRange) {
                     ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(-5, 10, -10));
                 }
             } else {
                 if (!idleIsImported) {
-                    BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "Idle.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "Idle.glb", scene, function (meshes, particleSystems, skeletons) {
                         idleIsImported = true;
-                        if (scene.animationGroups.length > 0) {
-                            scene.animationGroups[scene.animationGroups.length - 1].play(true);
-                        }
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
                     });
                 }
             }
         });
-
-        // scene.registerAfterRender(() => {
-        //     if (root.intersectsMesh(ball, false)) {
-        //         console.log("in range");
-        //         isInRange = true;
-        //     } else {
-        //         isInRange = false;
-        //     }
-        // });
     });
 
-// // Player2
-// BABYLON.SceneLoader.ImportMesh(null, "assets/Player/", "player.glb", scene, function (meshes) {
-//     meshes[0].position = new BABYLON.Vector3(-10, 0, 10);
-// });
-// BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "Idle.glb", scene, function (meshes, particleSystems, skeletons) {
-//     let root = meshes.find((mesh) => mesh.name === "__root__");
-//     root.position = new BABYLON.Vector3(-10, 0, 10);
-//     root.rotation = new BABYLON.Vector3(0, 0, 0);
+    // Player2
+    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "Idle.glb", scene, function (meshes, particleSystems, skeletons) {
+        let root = meshes.find((mesh) => mesh.name === "__root__");
+        let initPosition = new BABYLON.Vector3(-10, -0.9, 10);
+        let initRotation = new BABYLON.Vector3(0, 0, 0);
+        root.position = initPosition;
+        root.rotation = initRotation;
 
-//     root.physicsImpostor = new BABYLON.PhysicsImpostor(
-//         root,
-//         BABYLON.PhysicsImpostor.BoxImpostor, {
-//             mass: 1
-//         }, scene
-//     );
-
-//     root.ellipsoid = new BABYLON.Vector3(0.5, 1.0, 0.5);
-//     root.ellipsoidOffset = new BABYLON.Vector3(0, 1.0, 0);
-
-//     // Movements
-//     var movestep = 0.1;
-
-//     let idleIsImported = true;
-
-//     let forward = {
-//         pressed: false,
-//         imported: false
-//     };
-//     let left = {
-//         pressed: false,
-//         imported: false
-//     };
-//     let backward = {
-//         pressed: false,
-//         imported: false
-//     };
-//     let right = {
-//         pressed: false,
-//         imported: false
-//     };
-
-//     window.addEventListener("keydown", event => {
-//         switch (event.keyCode) {
-//             case 38: // Up
-//                 forward.pressed = true;
-//             break;
-//             case 37: // Left
-//                 left.pressed = true;
-//             break;
-//             case 40: // Down
-//                 backward.pressed = true;
-//             break;
-//             case 39: // Right
-//                 right.pressed = true;
-//             break;
-//             default:
-//             break;
-//         }
-//     });
-
-//     window.addEventListener("keyup", event => {
-//         switch (event.keyCode) {
-//             case 38: // Up
-//                 forward.pressed = false;
-//                 forward.imported = false;
-//             break;
-//             case 37: // Left
-//                 left.pressed = false;
-//                 left.imported = false;
-//             break;
-//             case 40: // Down
-//                 backward.pressed = false;
-//                 backward.imported = false;
-//             break;
-//             case 39: // Right
-//                 right.pressed = false;
-//                 right.imported = false;
-//             break;
-//             default:
-//             break;
-//         }
-//     });
-
-//     scene.registerBeforeRender(function() {
-//         if (!scene.isReady()) return;
+        root.physicsImpostor = new BABYLON.PhysicsImpostor(
+            root,
+            BABYLON.PhysicsImpostor.BoxImpostor,
+            {
+                mass: 0,
+                restitution: 0.9
+            },
+            scene
+        );
         
-//         if (forward.pressed) {
-//             if (!forward.imported) {
-//                 BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunForward.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
-//                     idleIsImported = false;
-//                     forward.imported = true;
-//                     if (scene.animationGroups.length > 0) {
-//                         scene.animationGroups[scene.animationGroups.length - 1].play(true);
-//                     }
-//                 });
-//             }
-//             root.moveWithCollisions(new BABYLON.Vector3(0, 0, -movestep));
-//         } else if (left.pressed) {
-//             if (!left.imported) {
-//                 BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunLeft.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
-//                     idleIsImported = false;
-//                     left.imported = true;
-//                     if (scene.animationGroups.length > 0) {
-//                         scene.animationGroups[scene.animationGroups.length - 1].play(true);
-//                     }
-//                 });
-//             }
-//             root.moveWithCollisions(new BABYLON.Vector3(movestep, 0, 0));
-//         } else if (backward.pressed) {
-//             if (!backward.imported) {
-//                 BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunBackward.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
-//                     idleIsImported = false;
-//                     backward.imported = true;
-//                     if (scene.animationGroups.length > 0) {
-//                         scene.animationGroups[scene.animationGroups.length - 1].play(true);
-//                     }
-//                 });
-//             }
-//             root.moveWithCollisions(new BABYLON.Vector3(0, 0, movestep));
-//         } else if (right.pressed) {
-//             if (!right.imported) {
-//                 BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "RunRight.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
-//                     idleIsImported = false;
-//                     right.imported = true;
-//                     if (scene.animationGroups.length > 0) {
-//                         scene.animationGroups[scene.animationGroups.length - 1].play(true);
-//                     }
-//                 });
-//             }
-//             root.moveWithCollisions(new BABYLON.Vector3(-movestep, 0, 0));
-//         } else {
-//             if (!idleIsImported) {
-//                 BABYLON.SceneLoader.ImportAnimations("./assets/Player/", "Idle.glb", scene, false, BABYLON.SceneLoaderAnimationGroupLoadingMode.Clean, null, (scene) => {
-//                     idleIsImported = true;
-//                     if (scene.animationGroups.length > 0) {
-//                         scene.animationGroups[scene.animationGroups.length - 1].play(true);
-//                     }
-//                 });
-//             }
-//         }
-//     });
-// });
+        root.ellipsoid = new BABYLON.Vector3(5, 5, 5);
+        root.ellipsoidOffset = new BABYLON.Vector3(5, 5, 5);
+        root.checkCollisions = true;
+        root.showBoundingBox = true;
+
+        var min = null;
+        var max = null;
+        meshes.forEach(function (mesh) {
+            const boundingBox = mesh.getBoundingInfo().boundingBox;
+            if (min === null) {
+                min = new BABYLON.Vector3();
+                min.copyFrom(boundingBox.minimum);
+            }
+
+            if (max === null) {
+                max = new BABYLON.Vector3();
+                max.copyFrom(boundingBox.maximum);
+            }
+
+            min.x = boundingBox.minimum.x < min.x ? boundingBox.minimum.x : min.x;
+            min.y = boundingBox.minimum.y < min.y ? boundingBox.minimum.y : min.y;
+            min.z = boundingBox.minimum.z < min.z ? boundingBox.minimum.z : min.z;
+
+            max.x = boundingBox.maximum.x > max.x ? boundingBox.maximum.x : max.x;
+            max.y = boundingBox.maximum.y > max.y ? boundingBox.maximum.y : max.y;
+            max.z = boundingBox.maximum.z > max.z ? boundingBox.maximum.z : max.z;
+        });
+        
+        let range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+        const size = max.subtract(min);
+        size.x *= 3;
+        size.y *= 2;
+        size.z *= 2;
+        range.parent = root;
+        range.scaling.copyFrom(size);
+        range.position.y = 2.9;
+        range.visibility = 0;
+
+        // root.applyGravity = true;
+
+        // Movements
+        let idleIsImported = true;
+
+        let forward = {
+            pressed: false,
+            imported: false
+        };
+        let left = {
+            pressed: false,
+            imported: false
+        };
+        let backward = {
+            pressed: false,
+            imported: false
+        };
+        let right = {
+            pressed: false,
+            imported: false
+        };
+        let rightClick = {
+            pressed: false,
+            imported: false
+        };
+        let leftClick = {
+            pressed: false,
+            imported: false
+        };
+
+        let isInRange = false;
+
+        window.addEventListener("keydown", event => {
+            switch (event.keyCode) {
+                case 79: // O
+                    forward.pressed = true;
+                break;
+                case 75: // K
+                    left.pressed = true;
+                break;
+                case 76: // L
+                    backward.pressed = true;
+                break;
+                case 77: // M
+                    right.pressed = true;
+                break;
+                case 73: // I
+                    rightClick.pressed = true;
+                break;
+                case 80: // P
+                    leftClick.pressed = true;
+                break;
+                default:
+                break;
+            }
+        });
+
+        window.addEventListener("keyup", event => {
+            switch (event.keyCode) {
+                case 79: // O
+                    forward.pressed = false;
+                    forward.imported = false;
+                break;
+                case 75: // K
+                    left.pressed = false;
+                    left.imported = false;
+                break;
+                case 76: // L
+                    backward.pressed = false;
+                    backward.imported = false;
+                break;
+                case 77: // M
+                    right.pressed = false;
+                    right.imported = false;
+                break;
+                case 73: // I
+                    rightClick.pressed = false;
+                    rightClick.imported = false;
+                break;
+                case 80: // P
+                    leftClick.pressed = false;
+                    leftClick.imported = false;
+                break;
+                default:
+                break;
+            }
+        });
+
+        scene.registerBeforeRender(function() {
+            if (!scene.isReady()) return;
+
+            if (range.intersectsMesh(ball, false)) {
+                isInRange = true;
+            } else {
+                isInRange = false;
+            }
+
+            if (forward.pressed) {
+                if (!forward.imported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "RunForward.glb", scene, function (meshes, particleSystems, skeletons) {
+                        idleIsImported = false;
+                        forward.imported = true;
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
+                    });
+                }
+                root.moveWithCollisions(new BABYLON.Vector3(0, 0, -movestep));
+            } else if (left.pressed) {
+                if (!left.imported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "RunLeft.glb", scene, function (meshes, particleSystems, skeletons) {
+                        idleIsImported = false;
+                        left.imported = true;
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
+                    });
+                }
+                root.moveWithCollisions(new BABYLON.Vector3(movestep, 0, 0));
+            } else if (backward.pressed) {
+                if (!backward.imported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "RunBackward.glb", scene, function (meshes, particleSystems, skeletons) {
+                        idleIsImported = false;
+                        backward.imported = true;
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
+                    });
+                }
+                root.moveWithCollisions(new BABYLON.Vector3(0, 0, movestep));
+            } else if (right.pressed) {
+                if (!right.imported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "RunRight.glb", scene, function (meshes, particleSystems, skeletons) {
+                        idleIsImported = false;
+                        right.imported = true;
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
+                    });
+                }
+                root.moveWithCollisions(new BABYLON.Vector3(-movestep, 0, 0));
+            } else if (rightClick.pressed) {
+                if (!rightClick.imported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "ForeDropShot.glb", scene, function (meshes, particleSystems, skeletons) {
+                        idleIsImported = false;
+                        rightClick.imported = true;
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+                    });
+                }
+                if (isInRange) {
+                    ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(5, 10, -10));
+                }
+            } else if (leftClick.pressed) {
+                if (!leftClick.imported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "BackDropShot.glb", scene, function (meshes, particleSystems, skeletons) {
+                        idleIsImported = false;
+                        leftClick.imported = true;
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+                    });
+                }
+                if (isInRange) {
+                    ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(-5, 10, -10));
+                }
+            } else {
+                if (!idleIsImported) {
+                    BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "Idle.glb", scene, function (meshes, particleSystems, skeletons) {
+                        idleIsImported = true;
+                        let elem = meshes.find((mesh) => mesh.name === "__root__");
+                        elem.position = root.position;
+                        elem.rotation = root.rotation;
+                        root.dispose();
+                        root = elem;
+                        range.parent = root;
+        
+                        range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+                        range.parent = root;
+                        range.scaling.copyFrom(size);
+                        range.position.y = 2.9;
+                        range.visibility = 0;
+                    });
+                }
+            }
+        });
+    });
 
     return scene;
 };
