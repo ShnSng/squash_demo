@@ -27,7 +27,7 @@ var createScene = () => {
 
     // Add a camera to the scene and attach it to the canvas
     var camera = new BABYLON.ArcRotateCamera(
-        "Camera",
+        "camera",
         Math.PI / 2,
         Math.PI / 3,
         35,
@@ -38,6 +38,15 @@ var createScene = () => {
 
     // Add lights to the scene
     var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+    var dirLight = new BABYLON.DirectionalLight(
+      "dirLight",
+      new BABYLON.Vector3(0, -1, -1),
+      scene
+    );
+    dirLight.position = new BABYLON.Vector3(0, 20, 0);
+    var shadows = new BABYLON.ShadowGenerator(1024, dirLight);
+    shadows.useBlurExponentialShadowMap = true;
+    shadows.setTransparencyShadow(true);
 
     // Create playground
     var size = 30;
@@ -52,10 +61,11 @@ var createScene = () => {
     playground.position.y = -1;
     playground.rotation.x = Math.PI / 2;
     playground.physicsImpostor = makeStaticImposter(playground, scene);
+    playground.receiveShadows = true;
 
     // Create walls
     var topWall = new BABYLON.MeshBuilder.CreateBox(
-        'wall',
+        "wall",
         {
             width: size,
             height: size,
@@ -168,6 +178,8 @@ var createScene = () => {
     );
     ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, -5));
     ball.showBoundingBox = true;
+    shadows.getShadowMap().renderList.push(ball);
+    
     // ball.ellipsoid = new BABYLON.Vector3(0, 0, 0);
     // ball.ellipsoidOffset = new BABYLON.Vector3(0, 0, 0);
     // ball.checkCollisions = true;
