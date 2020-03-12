@@ -175,6 +175,7 @@ var createScene = () => {
     scene.ambientColor = BABYLON.Color3.White();
 
     // Import players
+    var movestep = 0.1;
 
     // Player1
     BABYLON.SceneLoader.ImportMesh("", "assets/Player/", "Idle.glb", scene, function (meshes, particleSystems, skeletons) {
@@ -241,8 +242,6 @@ var createScene = () => {
         // root.applyGravity = true;
 
         // Movements
-        var movestep = 0.1;
-
         let idleIsImported = true;
 
         let forward = {
@@ -489,8 +488,6 @@ var createScene = () => {
         // root.applyGravity = true;
 
         // Movements
-        var movestep = 0.1;
-
         let idleIsImported = true;
 
         let forward = {
@@ -522,22 +519,22 @@ var createScene = () => {
 
         window.addEventListener("keydown", event => {
             switch (event.keyCode) {
-                case 73: // I
+                case 79: // O
                     forward.pressed = true;
                 break;
-                case 74: // J
+                case 75: // K
                     left.pressed = true;
                 break;
-                case 75: // K
+                case 76: // L
                     backward.pressed = true;
                 break;
-                case 76: // L
+                case 77: // M
                     right.pressed = true;
                 break;
-                case 85: // U
+                case 73: // I
                     rightClick.pressed = true;
                 break;
-                case 79: // O
+                case 80: // P
                     leftClick.pressed = true;
                 break;
                 default:
@@ -547,27 +544,27 @@ var createScene = () => {
 
         window.addEventListener("keyup", event => {
             switch (event.keyCode) {
-                case 73: // I
+                case 79: // O
                     forward.pressed = false;
                     forward.imported = false;
                 break;
-                case 74: // J
+                case 75: // K
                     left.pressed = false;
                     left.imported = false;
                 break;
-                case 75: // K
+                case 76: // L
                     backward.pressed = false;
                     backward.imported = false;
                 break;
-                case 76: // L
+                case 77: // M
                     right.pressed = false;
                     right.imported = false;
                 break;
-                case 85: // U
+                case 73: // I
                     rightClick.pressed = false;
                     rightClick.imported = false;
                 break;
-                case 79: // O
+                case 80: // P
                     leftClick.pressed = false;
                     leftClick.imported = false;
                 break;
