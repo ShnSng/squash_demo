@@ -241,7 +241,7 @@ var createScene = () => {
             max.z = boundingBox.maximum.z > max.z ? boundingBox.maximum.z : max.z;
         });
         
-        const range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
+        let range = BABYLON.MeshBuilder.CreateBox("bounds", {size: 1}, scene);
         const size = max.subtract(min);
         size.x *= 3;
         size.y *= 2;
