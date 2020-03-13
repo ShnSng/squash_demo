@@ -141,8 +141,8 @@ var createScene = () => {
     ballVertexData.applyToMesh(ball);
 
     var ballMaterial = new BABYLON.StandardMaterial(
-      "ballMaterial",
-      scene
+        "ballMaterial",
+        scene
     );
 
     ballMaterial.diffuseColor = new BABYLON.Color3(0.3, 0, 0.8);
@@ -176,9 +176,15 @@ var createScene = () => {
         },
         scene
     );
-    ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, 0, -5));
-    ball.showBoundingBox = true;
+    ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, -20, 0));
     shadows.getShadowMap().renderList.push(ball);
+
+    scene.registerAfterRender(() => {
+        if (ball.position.z >= size) {
+            ball.position = new BABYLON.Vector3(0, 1, 0);
+            ball.physicsImpostor.setLinearVelocity(new BABYLON.Vector3(0, -20, 0));
+        }
+    });
     
     // ball.ellipsoid = new BABYLON.Vector3(0, 0, 0);
     // ball.ellipsoidOffset = new BABYLON.Vector3(0, 0, 0);
@@ -249,7 +255,7 @@ var createScene = () => {
         range.parent = root;
         range.scaling.copyFrom(size);
         range.position.y = 2.9;
-        range.visibility = 0.1;
+        range.visibility = 0;
 
         // root.applyGravity = true;
 
@@ -343,7 +349,6 @@ var createScene = () => {
             if (!scene.isReady()) return;
 
             if (range.intersectsMesh(ball, false)) {
-                console.log("in range");
                 isInRange = true;
             } else {
                 isInRange = false;
@@ -364,7 +369,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(0, 0, -movestep));
@@ -384,7 +389,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(movestep, 0, 0));
@@ -404,7 +409,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(0, 0, movestep));
@@ -424,7 +429,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(-movestep, 0, 0));
@@ -475,20 +480,11 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
             }
         });
-
-        // scene.registerAfterRender(() => {
-        //     if (root.intersectsMesh(ball, false)) {
-        //         console.log("in range");
-        //         isInRange = true;
-        //     } else {
-        //         isInRange = false;
-        //     }
-        // });
     });
 
     // Player2
@@ -545,7 +541,7 @@ var createScene = () => {
         range.parent = root;
         range.scaling.copyFrom(size);
         range.position.y = 2.9;
-        range.visibility = 0.1;
+        range.visibility = 0;
 
         // root.applyGravity = true;
 
@@ -639,7 +635,6 @@ var createScene = () => {
             if (!scene.isReady()) return;
 
             if (range.intersectsMesh(ball, false)) {
-                console.log("in range");
                 isInRange = true;
             } else {
                 isInRange = false;
@@ -660,7 +655,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(0, 0, -movestep));
@@ -680,7 +675,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(movestep, 0, 0));
@@ -700,7 +695,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(0, 0, movestep));
@@ -720,7 +715,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
                 root.moveWithCollisions(new BABYLON.Vector3(-movestep, 0, 0));
@@ -771,7 +766,7 @@ var createScene = () => {
                         range.parent = root;
                         range.scaling.copyFrom(size);
                         range.position.y = 2.9;
-                        range.visibility = 0.1;
+                        range.visibility = 0;
                     });
                 }
             }
